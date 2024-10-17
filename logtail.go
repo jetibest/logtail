@@ -12,7 +12,72 @@ import (
 	"strings"
 )
 
-func parse_range(r string) (int, int, error) {
+func parse_lines(s string) (int, error) {
+	
+	multiplier := 1
+	val := strings.ToUpper(s)
+	
+	switch {
+		case strings.HasSuffix(val, "K"):
+			multiplier = 1000
+			val = strings.TrimSuffix(val, "K")
+		case strings.HasSuffix(val, "M"):
+			multiplier = 1000 * 1000
+			val = strings.TrimSuffix(val, "M")
+		case strings.HasSuffix(val, "G"):
+			multiplier = 1000 * 1000 * 1000
+			val = strings.TrimSuffix(val, "G")
+	}
+	
+	f64val, err := strconv.ParseFloat(val, 64)
+	if err != nil {
+		return -1, err
+	}
+	
+	return int(f64val * float64(multiplier)), nil
+}
+
+func parse_bytes(s string) (int, error) {
+	
+	multiplier := 1
+	val := strings.ToUpper(s)
+	
+	switch {
+		case strings.HasSuffix(val, "KIB"):
+			multiplier = 1024
+			val = strings.TrimSuffix(val, "KIB")
+		case strings.HasSuffix(val, "KB") || strings.HasSuffix(val, "K"):
+			multiplier = 1000
+			val = strings.TrimSuffix(val, "K")
+			val = strings.TrimSuffix(val, "KB")
+		case strings.HasSuffix(val, "MIB"):
+			multiplier = 1024 * 1024
+			val = strings.TrimSuffix(val, "MIB")
+		case strings.HasSuffix(val, "MB") || strings.HasSuffix(val, "M"):
+			multiplier = 1000 * 1000
+			val = strings.TrimSuffix(val, "M")
+			val = strings.TrimSuffix(val, "MB")
+		case strings.HasSuffix(val, "GIB"):
+			multiplier = 1024 * 1024 * 1024
+			val = strings.TrimSuffix(val, "GIB")
+		case strings.HasSuffix(val, "GB") || strings.HasSuffix(val, "G"):
+			multiplier = 1000 * 1000 * 1000
+			val = strings.TrimSuffix(val, "G")
+			val = strings.TrimSuffix(val, "GB")
+		case strings.HasSuffix(val, "B"):
+			multiplier = 1
+			val = strings.TrimSuffix(val, "B")
+	}
+	
+	f64val, err := strconv.ParseFloat(val, 64)
+	if err != nil {
+		return -1, err
+	}
+	
+	return int(f64val * float64(multiplier)), nil
+}
+
+func parse_range(r string, parser func(string) (int, error)) (int, int, error) {
 	
 	parts := strings.Split(r, ":")
 	var min, max int
@@ -21,19 +86,19 @@ func parse_range(r string) (int, int, error) {
 	min, max = -1, -1
 	
 	if len(parts) == 1 {
-		max, err = strconv.Atoi(r)
+		max, err = parser(r)
 		if err != nil {
 			return -1, -1, fmt.Errorf("invalid max value: %s", r)
 		}
 	} else {
 		if parts[0] != "" {
-			min, err = strconv.Atoi(parts[0])
+			min, err = parser(parts[0])
 			if err != nil {
 				return -1, -1, fmt.Errorf("invalid min value: %s", parts[0])
 			}
 		}
 		if parts[1] != "" {
-			max, err = strconv.Atoi(parts[1])
+			max, err = parser(parts[1])
 			if err != nil {
 				return -1, -1, fmt.Errorf("invalid max value: %s", parts[1])
 			}
@@ -70,7 +135,7 @@ func main() {
 	
 	if bytes_range != "" {
 		var err error
-		min_bytes, max_bytes, err = parse_range(bytes_range)
+		min_bytes, max_bytes, err = parse_range(bytes_range, parse_bytes)
 		if err != nil {
 			fmt.Println("error: byte range parse error (option -c):", err)
 			os.Exit(1)
@@ -80,7 +145,7 @@ func main() {
 	}
 	if lines_range != "" {
 		var err error
-		min_lines, max_lines, err = parse_range(lines_range)
+		min_lines, max_lines, err = parse_range(lines_range, parse_lines)
 		if err != nil {
 			fmt.Println("error: line range parse error (option -n):", err)
 			os.Exit(1)
